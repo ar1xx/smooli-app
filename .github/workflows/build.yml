@@ -29,43 +29,44 @@ jobs:
 
       - name: Add iOS platform
         run: |
-          npm install @capacitor/core @capacitor/cli @capacitor/ios
+          npm install @capacitor/core @capacitor/cli @capacitor/ios --save-dev
           npx cap add ios
           npx cap sync ios
 
-      - name: Build unsigned iOS app
+      - name: Build iOS Simulator app
         run: |
           set -e
           cd ios/App
           xcodebuild \
             -workspace App.xcworkspace \
             -scheme App \
-            -configuration Release \
-            -sdk iphoneos \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'platform=iOS Simulator,name=iPhone 15' \
             -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
             clean build
 
-      - name: Package .app into .ipa
+      - name: Package simulator app into .ipa
         run: |
           set -e
           APP_PATH=$(find ios/App/build -name "App.app" -type d | head -n 1)
           echo "Found app at: $APP_PATH"
           mkdir -p Payload
           cp -R "$APP_PATH" Payload/App.app
-          zip -r -q Smooli.ipa Payload
-          ls -lh Smooli.ipa
+          zip -r -q Smooli-sim.ipa Payload
+          ls -lh Smooli-sim.ipa
 
-      - name: Upload IPA artifact
+      - name: Upload simulator IPA artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Smooli-iOS
-          path: Smooli.ipa
+          name: Smooli-iOS-Simulator
+          path: Smooli-sim.ipa
           retention-days: 7
 
-      - name: Upload app bundle artifact
+      - name: Upload .app artifact
         uses: actions/upload-artifact@v4
         with:
           name: Smooli-App
