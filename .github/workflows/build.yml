@@ -27,22 +27,26 @@ jobs:
       - name: Build web app
         run: npm run build
 
-      - name: Add iOS platform
+      - name: Prepare Capacitor iOS project
         run: |
           npm install @capacitor/core @capacitor/cli @capacitor/ios --save-dev
-          npx cap add ios
+          npx cap add ios || true
           npx cap sync ios
 
+      - name: Install CocoaPods deps
+        working-directory: ios/App
+        run: pod install --repo-update
+
       - name: Build iOS Simulator app
+        working-directory: ios/App
         run: |
           set -e
-          cd ios/App
           xcodebuild \
             -workspace App.xcworkspace \
             -scheme App \
             -configuration Debug \
             -sdk iphonesimulator \
-            -destination 'platform=iOS Simulator,name=iPhone 15' \
+            -destination 'generic/platform=iOS Simulator' \
             -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
