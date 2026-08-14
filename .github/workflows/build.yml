@@ -1,0 +1,74 @@
+name: Build iOS App
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-ios:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web app
+        run: npm run build
+
+      - name: Add iOS platform
+        run: |
+          npm install @capacitor/core @capacitor/cli @capacitor/ios
+          npx cap add ios
+          npx cap sync ios
+
+      - name: Build unsigned iOS app
+        run: |
+          set -e
+          cd ios/App
+          xcodebuild \
+            -workspace App.xcworkspace \
+            -scheme App \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            clean build
+
+      - name: Package .app into .ipa
+        run: |
+          set -e
+          APP_PATH=$(find ios/App/build -name "App.app" -type d | head -n 1)
+          echo "Found app at: $APP_PATH"
+          mkdir -p Payload
+          cp -R "$APP_PATH" Payload/App.app
+          zip -r -q Smooli.ipa Payload
+          ls -lh Smooli.ipa
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Smooli-iOS
+          path: Smooli.ipa
+          retention-days: 7
+
+      - name: Upload app bundle artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Smooli-App
+          path: ios/App/build/**/*.app
+          if-no-files-found: warn
+          retention-days: 7
